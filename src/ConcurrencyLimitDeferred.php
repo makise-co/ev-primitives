@@ -113,12 +113,18 @@ class ConcurrencyLimitDeferred implements PromiseInterface
         Coroutine::yield();
 
         if ($timedOut) {
-            // remove coroutine from waiters queue
-            foreach ($this->waiters as $key => $waiter) {
-                if ($waiter === $cid) {
-                    unset($this->waiters[$key]);
-                    break;
+            $waiters = [];
+
+            while (!$this->waiters->isEmpty()) {
+                $waiter = $this->waiters->dequeue();
+
+                if ($waiter !== $cid) {
+                    $waiters[] = $waiter;
                 }
+            }
+
+            foreach ($waiters as $waiter) {
+                $this->waiters->enqueue($waiter);
             }
 
             throw new RuntimeException('waitForResolution timeout');

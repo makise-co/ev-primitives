@@ -7,6 +7,7 @@ namespace MakiseCo\EvPrimitives\Tests;
 use Closure;
 use InvalidArgumentException;
 use MakiseCo\EvPrimitives\ConcurrencyLimitDeferred;
+use MakiseCo\EvPrimitives\ConcurrencyLimitLockDeferred;
 use MakiseCo\EvPrimitives\Deferred;
 use MakiseCo\EvPrimitives\ReusableDeferred;
 use Swoole\Coroutine;
@@ -97,6 +98,54 @@ class DeferredTest extends CoroTestCase
             // prevent overlapping
             while ($deferred->isWaiting()) {
                 $deferred->waitForResolution();
+            }
+
+            // imitate background processing
+            Coroutine::create(static function () use ($sleep, $deferred, $cid) {
+                Coroutine::sleep($sleep);
+
+                $deferred->resolve($cid);
+            });
+
+            $ch->push($deferred->wait());
+        };
+
+        $cid1 = Coroutine::create($loop, 0.05);
+        $cid2 = Coroutine::create($loop, 0.07);
+        $cid3 = Coroutine::create($loop, 0.02);
+
+        $res1 = $ch->pop();
+        $res2 = $ch->pop();
+        $res3 = $ch->pop();
+
+        // coroutine results should be received sequentially
+        self::assertSame($cid1, $res1);
+        self::assertSame($cid2, $res2);
+        self::assertSame($cid3, $res3);
+    }
+
+    public function testConcurrencyLimitLock(): void
+    {
+        $ch = new Coroutine\Channel(1);
+        $deferred = new ConcurrencyLimitLockDeferred(new ReusableDeferred());
+
+        $loop = static function (float $sleep) use ($deferred, $ch) {
+            $cid = Coroutine::getCid();
+
+            // prevent overlapping
+            while ($deferred->isWaiting()) {
+                $deferred->waitForResolution();
+            }
+
+            if ($cid % 2 === 0) {
+                $deferred->lock();
+
+                Coroutine::sleep($sleep);
+
+                $ch->push($cid);
+                $deferred->unlock();
+
+                return;
             }
 
             // imitate background processing
