@@ -8,6 +8,9 @@ use Closure;
 use LogicException;
 use Swoole\Timer as SwooleTimer;
 
+/**
+ * OOP Wrapper of Swoole Timer
+ */
 class Timer
 {
     /**

@@ -13,12 +13,15 @@ use const SWOOLE_CHANNEL_CLOSED;
 use const SWOOLE_CHANNEL_OK;
 use const SWOOLE_CHANNEL_TIMEOUT;
 
+/**
+ * OOP Wrapper of Swoole Channel instead of returning false on channel error it is throwing exceptions
+ */
 class Channel implements Countable
 {
     private SwooleChannel $channel;
     private bool $isClosed = false;
 
-    public function __construct(int $size)
+    public function __construct(int $size = 1)
     {
         $this->channel = new SwooleChannel($size);
     }
@@ -102,6 +105,16 @@ class Channel implements Countable
         }
 
         return $this->channel->length();
+    }
+
+    /**
+     * Alias of method count for compatibility with Swoole Channel API
+     *
+     * @return int
+     */
+    public function length(): int
+    {
+        return $this->count();
     }
 
     public function isClosed(): bool
