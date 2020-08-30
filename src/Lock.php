@@ -50,7 +50,7 @@ class Lock
         $queue = $this->queue;
         $this->queue = [];
 
-        foreach ($queue as $key => $cid) {
+        foreach ($queue as $cid => $val) {
             Coroutine::resume($cid);
         }
     }
@@ -72,7 +72,9 @@ class Lock
 
         $this->block();
 
-        if (!$timedOut) {
+        if ($timedOut) {
+            unset($this->queue[$cid]);
+        } else {
             Timer::clear($tid);
         }
 
@@ -81,7 +83,7 @@ class Lock
 
     private function block(): void
     {
-        $this->queue[] = Coroutine::getCid();
+        $this->queue[Coroutine::getCid()] = null;
         Coroutine::yield();
     }
 }
