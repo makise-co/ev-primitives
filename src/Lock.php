@@ -28,6 +28,8 @@ class Lock
         if ($this->blockWithTimeout($timeout)) {
             throw new Exception\LockTimeoutException('Lock timeout');
         }
+
+        $this->locked = true;
     }
 
     public function wait(float $timeout = 0): void
